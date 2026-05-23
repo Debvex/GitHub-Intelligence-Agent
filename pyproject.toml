@@ -1,0 +1,23 @@
+[project]
+name = "github-intelligence-agent"
+version = "0.1.0"
+description = "Async LangGraph agent for GitHub intelligence via MCP and ChatOllama"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "langgraph>=0.2.0",
+    "langchain-mcp-adapters>=0.1.0",
+    "langchain-ollama>=0.1.0",
+    "python-dotenv>=1.0.0",
+    "langgraph-checkpoint-sqlite>=0.1.0",
+    "aiohttp>=3.9.0",
+]
+
+[project.scripts]
+github-agent = "agent:main"
+
+[dependency-groups]
+dev = []
+
+[tool.uv]
+package = true
