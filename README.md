@@ -4,7 +4,7 @@ A production-ready **async LangGraph** agent that connects to **GitHub via MCP**
 
 Demo : 
 <p align="center">
-  <video src="https://drive.google.com/file/d/1x1OaRHn_l467GAyBHb1uoXdRMkE2GVOq/view?usp=sharing" width="100%" controls></video>
+  <video src="https://drive.google.com/file/d/1x1OaRHn_l467GAyBHb1uoXdRMkE2GVOq/view?usp=sharing" width="100%" autoplay loop muted controls></video>
 </p>
 ---
 
