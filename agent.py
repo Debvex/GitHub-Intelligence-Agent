@@ -48,7 +48,7 @@ def _require_env(key: str) -> str:
 
 GITHUB_PAT: str = _require_env("GITHUB_PAT")
 OLLAMA_API_KEY: str = _require_env("OLLAMA_API_KEY")
-OLLAMA_BASE_URL: str = os.getenv("OLLAMA_BASE_URL", "https://api.ollama.ai")
+OLLAMA_BASE_URL: str = os.getenv("OLLAMA_BASE_URL", "https://ollama.com")
 OLLAMA_MODEL: str = os.getenv("OLLAMA_MODEL", "kimi-k2.6:cloud")
 DB_PATH: str = os.getenv("DB_PATH", ".checkpoints/checkpoints.db")
 MCP_SERVER_NAME: str = "github"
@@ -84,18 +84,15 @@ def _build_llm() -> ChatOllama:
     """
     Instantiate ChatOllama pointing at the Ollama Cloud endpoint.
 
-    The ``langchain-ollama`` package delegates to the underlying ``ollama``
-    Python client (``AsyncClient``).  ``host`` sets the server URL, while
-    ``async_client_kwargs`` is merged into the kwargs passed when that
-    underlying ``httpx.AsyncClient`` is created (so custom headers such as
-    *Authorization* are forwarded automatically).
+    ``langchain-ollama`` exposes ``base_url`` (not ``host``) to configure the
+    server address, and ``client_kwargs`` (not ``async_client_kwargs``) for
+    extra ``httpx`` client options (e.g. auth headers).
     """
     return ChatOllama(
         model=OLLAMA_MODEL,
         temperature=0.0,
-        # Under the hood langchain-ollama passes this to ollama.AsyncClient(host=...)
-        host=OLLAMA_BASE_URL,
-        async_client_kwargs={
+        base_url=OLLAMA_BASE_URL,
+        client_kwargs={
             "headers": {
                 "Authorization": f"Bearer {OLLAMA_API_KEY}",
             }
@@ -174,47 +171,40 @@ async def run_agent(
     mcp_config = _build_mcp_config()
     llm = _build_llm()
 
-    # We need the MCP client as an async context manager, and the checkpointer
-    # likewise.  Manually enter them so we can bind tools, build the graph, and
-    # run everything in one logical block.
+    # MultiServerMCPClient (v0.2.2+) is NOT an async context manager.
+    # It is a lightweight config holder; get_tools() spawns and cleans up
+    # per-server sessions internally on each call.
     mcp_client = MultiServerMCPClient(mcp_config)
-    try:
-        await mcp_client.__aenter__()
-        tools = await mcp_client.get_tools()
-        llm_with_tools = llm.bind_tools(tools)
+    tools = await mcp_client.get_tools()
+    llm_with_tools = llm.bind_tools(tools)
 
-        checkpointer = AsyncSqliteSaver.from_conn_string(DB_PATH)
-        try:
-            await checkpointer.__aenter__()
+    # The sqlite checkpointer MUST be used as an async context manager.
+    # from_conn_string returns an async generator, not a raw instance.
+    async with AsyncSqliteSaver.from_conn_string(DB_PATH) as checkpointer:
+        builder = build_graph(llm_with_tools, tools)
+        graph = builder.compile(checkpointer=checkpointer)
 
-            builder = build_graph(llm_with_tools, tools)
-            graph = builder.compile(checkpointer=checkpointer)
+        messages = [
+            SystemMessage(content=system_prompt),
+            HumanMessage(content=query),
+        ]
+        config = {"configurable": {"thread_id": thread_id}}
 
-            messages = [
-                SystemMessage(content=system_prompt),
-                HumanMessage(content=query),
-            ]
-            config = {"configurable": {"thread_id": thread_id}}
+        if stream:
+            final_content = ""
+            async for chunk in graph.astream(
+                {"messages": messages},
+                config=config,
+                stream_mode="values",
+            ):
+                last_msg = chunk["messages"][-1]
+                if hasattr(last_msg, "content"):
+                    final_content = last_msg.content
+            return str(final_content)
 
-            if stream:
-                final_content = ""
-                async for chunk in graph.astream(
-                    {"messages": messages},
-                    config=config,
-                    stream_mode="values",
-                ):
-                    last_msg = chunk["messages"][-1]
-                    if hasattr(last_msg, "content"):
-                        final_content = last_msg.content
-                return str(final_content)
-
-            result = await graph.ainvoke({"messages": messages}, config=config)
-            last_message = result["messages"][-1]
-            return str(getattr(last_message, "content", last_message))
-        finally:
-            await checkpointer.__aexit__(None, None, None)
-    finally:
-        await mcp_client.__aexit__(None, None, None)
+        result = await graph.ainvoke({"messages": messages}, config=config)
+        last_message = result["messages"][-1]
+        return str(getattr(last_message, "content", last_message))
 
 
 # ---------------------------------------------------------------------------
