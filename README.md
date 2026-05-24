@@ -2,12 +2,10 @@
 
 A production-ready **async LangGraph** agent that connects to **GitHub via MCP** (Multi-Server MCP Client) and answers natural-language queries using **ChatOllama Cloud** (`kimi-k2.6:cloud`) with persistent conversation memory powered by an **async SQLite checkpointer**.
 
-<div align="center" style="font-size:25px;">
-Demo :
-<br>
-<br>
-<video src="https://drive.google.com/drive/folders/1t6XqrqPxXH20WaqKDhvzzyKd0neNnuoC" width="100%" controls></video>
-</div>
+Demo : 
+<p align="center">
+  <video src="https://drive.google.com/file/d/1x1OaRHn_l467GAyBHb1uoXdRMkE2GVOq/view?usp=sharing" width="100%" controls></video>
+</p>
 ---
 
 ## Table of Contents
