@@ -6,7 +6,7 @@ A production-ready **async LangGraph** agent that connects to **GitHub via MCP**
 Demo :
 <br>
 <br>
-<video src="[Screen Recording 2026-05-24 173111.mp4](https://github.com/Debvex/GitHub-Intelligence-Agent/blob/d1b3e74963573b2dfe696371ebcad53361d58353/Screen%20Recording%202026-05-24%20173111.mp4)" width="100%" controls></video>
+<video src="https://drive.google.com/drive/folders/1t6XqrqPxXH20WaqKDhvzzyKd0neNnuoC" width="100%" controls></video>
 </div>
 ---
 
